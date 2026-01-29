@@ -32,8 +32,8 @@ sudo usermod -aG seat $USER
 ## You may need to reboot or re-login for the group change to apply.
 3. Build Core Hyprland Components (Strict Order)
 Hyprland has split its code into several sub-libraries. You must build them in this specific order.
-```
 ### 1. Hyprwayland-scanner (REQUIRED FIRST)
+```
 git clone https://github.com/hyprwm/hyprwayland-scanner
 cd hyprwayland-scanner
 cmake -B build
@@ -135,7 +135,7 @@ sudo make install
 cd ..
 ```
 ---
-5. Build xdg-desktop-portal-hyprland
+4. Build xdg-desktop-portal-hyprland
 Do not skip this, or screensharing and OBS will not work.
 ```
 git clone https://github.com/hyprwm/xdg-desktop-portal-hyprland
