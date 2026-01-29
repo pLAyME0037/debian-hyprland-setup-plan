@@ -1,11 +1,11 @@
 # Debian Hyprland Setup Plan 
-## document date 29 Jun 2025
+## document date 29 Jun 2026
 ---
 1. Install Dependencies
 Added libsdbus-c++-dev (for xdg-portal), libdisplay-info-dev (for aquamarine), and fixed missing build tools.
 ```
 sudo apt update && sudo apt install -y \
-  build-essential git meson ninja-build pkg-config cmake \
+  build-essential git meson ninja-build pkg-config cmake bison flex \
   libwayland-dev wayland-protocols \
   libdrm-dev libgbm-dev libxkbcommon-dev libpixman-1-dev \
   libegl-dev libgles2 libseat-dev seatd libinput-dev \
@@ -19,7 +19,6 @@ sudo apt update && sudo apt install -y \
   libpugixml-dev \
   libmagic-dev \
   libxcb-xkb-dev \
-  meson bison flex \
   libxcursor-dev \
   libre2-dev \
   libmuparser-dev \
@@ -147,12 +146,11 @@ sudo cmake --install build
 cd ..
 ```
 ## Final Config
-```
-# Standard tools
+### Standard tools
 ```
 sudo apt install -y foot rofi-wayland waybar wl-clipboard grim slurp swaybg polkit-kde-agent-1
 ```
-## Create config
+### Create config
 ```
 mkdir -p ~/.config/hypr
 cp /usr/local/share/hyprland/examples/hyprland.conf ~/.config/hypr/
