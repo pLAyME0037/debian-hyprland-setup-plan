@@ -16,12 +16,18 @@ sudo apt update && sudo apt install -y \
   libtomlplusplus-dev libcairo2-dev \
   libgl1-mesa-dev libgles2-mesa-dev mesa-common-dev \
   libdisplay-info-dev libsdbus-c++-dev libliftoff-dev \
+  libxcb-xinerama0-dev libxcb-xinput-dev \
   libpugixml-dev \
   libmagic-dev \
   libxcb-xkb-dev \
   libxcursor-dev \
   libre2-dev \
-  libmuparser-dev \
+  libmuparser-dev uuid-dev \
+  libcairo2-dev \
+  libpango1.0-dev \
+  libpangocairo-1.0-0 \
+  libinput-dev \
+  libglib2.0-dev \
 ```
 2. Setup Seatd (Optional but Recommended)
 Hyprland usually works with systemd-logind (standard on Debian) without this, but if you want to force seatd:
@@ -79,12 +85,16 @@ cd ..
 ```
 ### 6. Aquamarine (NEW BACKEND - REQUIRED)
 ```
-git clone https://github.com/hyprwm/aquamarine
+git clone https://github.com/hyprwm/aquamarine.git
 cd aquamarine
-cmake -B build
-cmake --build build -j `nproc`
+
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH=/usr/local
+cmake --build build
 sudo cmake --install build
-cd ..
+sudo ldconfig
+
 ```
 ### 7. libxkbcommon
 ```
@@ -103,7 +113,29 @@ meson setup build
 meson compile -C build
 sudo meson install -C build
 ```
-### 9. hyprwire (not working yet)
+# Example: install GCC 15 via PPA (adjust for your distro/version)
+```
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt update
+sudo apt install g++-15
+
+export CC=gcc-15
+export CXX=g++-15
+rm -rf build && mkdir build && cd build
+cmake ..
+make
+```
+### 9. libdisplay-info
+```
+git clone https://gitlab.freedesktop.org/emersion/libdisplay-info.git
+cd libdisplay-info
+
+meson setup build
+meson compile -C build
+sudo meson install -C build
+sudo ldconfig
+```
+### 10. hyprwire
 ```
 git clone https://github.com/hyprwm/hyprwire
 cd hyprwire
@@ -111,22 +143,7 @@ cmake -B build
 cmake --build build -j$(nproc)
 sudo cmake --install build
 ```
-with spcific build for hyprwire: (currently struck here)
-```
-cd ~/github/hyprwire
-rm -rf build
-
-cmake -B build \
-  -DCMAKE_C_COMPILER=gcc-14 \
-  -DCMAKE_CXX_COMPILER=g++-14 \
-  -DCMAKE_CXX_STANDARD=23 \
-  -DCMAKE_CXX_STANDARD_REQUIRED=ON
-
-cmake --build build -j$(nproc)
-sudo cmake --install build
-sudo ldconfig
-```
-### 10. Build Hyprland
+### 11. Build Hyprland
 ```
 git clone --recursive https://github.com/hyprwm/Hyprland
 cd Hyprland
