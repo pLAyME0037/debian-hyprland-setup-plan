@@ -17,17 +17,12 @@ sudo apt update && sudo apt install -y \
   libgl1-mesa-dev libgles2-mesa-dev mesa-common-dev \
   libdisplay-info-dev libsdbus-c++-dev libliftoff-dev \
   libxcb-xinerama0-dev libxcb-xinput-dev \
-  libpugixml-dev \
-  libmagic-dev \
-  libxcb-xkb-dev \
-  libxcursor-dev \
-  libre2-dev \
-  libmuparser-dev uuid-dev \
-  libcairo2-dev \
-  libpango1.0-dev \
-  libpangocairo-1.0-0 \
-  libinput-dev \
-  libglib2.0-dev \
+  libpugixml-dev libmagic-dev libxcb-xkb-dev \
+  libxcursor-dev libre2-dev libmuparser-dev uuid-dev \
+  libcairo2-dev libpango1.0-dev libpangocairo-1.0-0 \
+  libinput-dev libglib2.0-dev libpipewire-0.3-dev libspa-0.2-dev \
+  pipewire-jack pipewire-audio-client-libraries \
+  libiniparser-dev pkg-config
 ```
 2. Setup Seatd (Optional but Recommended)
 Hyprland usually works with systemd-logind (standard on Debian) without this, but if you want to force seatd:
@@ -143,7 +138,30 @@ cmake -B build
 cmake --build build -j$(nproc)
 sudo cmake --install build
 ```
-### 11. Build Hyprland
+### 11. hyprtoolkit
+```
+git clone https://github.com/hyprwm/hyprtoolkit.git
+cd hyprtoolkit
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+sudo cmake --install build
+```
+```
+sudo find /usr -name "libhyprtoolkit.so*"
+echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/hyprtoolkit.conf
+sudo ldconfig
+```
+### 12. hyprland-guiutils
+```
+git clone https://github.com/hyprwm/hyprland-guiutils.git
+cd hyprland-guiutils
+mkdir -p build
+cd build
+cmake ..
+make -j$(nproc)
+sudo make install
+```
+### 13. Build Hyprland
 ```
 git clone --recursive https://github.com/hyprwm/Hyprland
 cd Hyprland
@@ -165,10 +183,28 @@ cd ..
 ## Final Config
 ### Standard tools
 ```
-sudo apt install -y foot rofi-wayland waybar wl-clipboard grim slurp swaybg polkit-kde-agent-1
+sudo apt install -y kitty rofi libxml2 waybar wl-clipboard grim slurp swaybg polkit-kde-agent-1
 ```
 ### Create config
 ```
 mkdir -p ~/.config/hypr
 cp /usr/local/share/hyprland/examples/hyprland.conf ~/.config/hypr/
+```
+5. Other if needed
+- hyprlauncher
+```
+sudo apt install libqalculate-dev pkg-config
+git clone https://github.com/hyprwm/hyprlauncher.git
+cd hyprlauncher
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
+sudo make install
+```
+- sddm
+```
+sudo apt install sddm
+sudo dpkg-reconfigure sddm  # Select SDDM as default
+sudo systemctl enable sddm
+reboot
 ```
