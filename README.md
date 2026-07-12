@@ -1,9 +1,34 @@
-# Debian Hyprland Setup Plan 
-## document date 29 Jun 2026
+# Debian Hyprland Setup Plan
+## document date 12 Jul 2026 - redo, not confirm working
 ---
 1. Install Dependencies
-Added libsdbus-c++-dev (for xdg-portal), libdisplay-info-dev (for aquamarine), and fixed missing build tools.
+Added libsdbus-c++-dev (for xdg-portal), libdisplay-info-dev (for aquamarine),
+and fixed missing build tools.
+
+```sh
+sudo apt update && sudo apt install -y \
+  build-essential git meson ninja-build pkg-config cmake bison flex \
+  libwayland wayland-protocols \
+  libdrm libgbm libxkbcommon libpixman-1 \
+  libegl libgles2 libseat seatd libinput \
+  libxcb-composite0 libxcb-render0 libxcb-shape0 \
+  libxcb-xfixes0 libxcb-dri3 libxcb-present \
+  libxcb-sync libxcb-randr0 libxcb-cursor libxcb-icccm4 \
+  libpango1.0 libudev hwdata glslang-tools spirv-tools \
+  libtomlplusplus libcairo2 \
+  libgl1-mesa libgles2-mesa mesa-common \
+  libdisplay-info libsdbus-c++ libliftoff \
+  libxcb-xinerama0 libxcb-xinput \
+  libpugixml libmagic libxcb-xkb \
+  libxcursor libre2 libmuparser uuid \
+  libcairo2 libpango1.0 libpangocairo-1.0-0 \
+  libinput libglib2.0 libpipewire-0.3 libspa-0.2 \
+  pipewire-jack pipewire-audio-client-libraries \
+  libiniparser pkg-config
 ```
+
+- for dev pkgs
+```sh
 sudo apt update && sudo apt install -y \
   build-essential git meson ninja-build pkg-config cmake bison flex \
   libwayland-dev wayland-protocols \
@@ -24,175 +49,104 @@ sudo apt update && sudo apt install -y \
   pipewire-jack pipewire-audio-client-libraries \
   libiniparser-dev pkg-config
 ```
-2. Setup Seatd (Optional but Recommended)
-Hyprland usually works with systemd-logind (standard on Debian) without this, but if you want to force seatd:
-```
-sudo systemctl enable seatd --now
-sudo usermod -aG seat $USER
-```
+
 ## You may need to reboot or re-login for the group change to apply.
 3. Build Core Hyprland Components (Strict Order)
-Hyprland has split its code into several sub-libraries. You must build them in this specific order.
+Hyprland has split its code into several sub-libraries. You must build them in
+this specific order.
 ### 1. Hyprwayland-scanner (REQUIRED FIRST)
-```
-git clone https://github.com/hyprwm/hyprwayland-scanner
+```sh
+git clone https://github.com/hyprwm/hyprwayland-scanner.git
 cd hyprwayland-scanner
-cmake -B build
-cmake --build build -j `nproc`
+cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -S . -B ./build
+cmake --build ./build --config Release --target all -j`nproc 2>/dev/null || getconf NPROCESSORS_CONF`
 sudo cmake --install build
 cd ..
 ```
+
 ### 2. Hyprutils
-```
-git clone https://github.com/hyprwm/hyprutils
-cd hyprutils
-cmake -B build
-cmake --build build -j `nproc`
+```sh
+git clone https://github.com/hyprwm/hyprutils.git
+cd hyprutils/
+cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -S . -B ./build
+cmake --build ./build --config Release --target all -j`nproc 2>/dev/null || getconf NPROCESSORS_CONF`
 sudo cmake --install build
 cd ..
 ```
+
 ### 3. Hyprlang
-```
+```sh
 git clone https://github.com/hyprwm/hyprlang
 cd hyprlang
-cmake -B build
-cmake --build build -j `nproc`
+cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -S . -B ./build
+cmake --build ./build --config Release --target hyprlang -j`nproc 2>/dev/null || getconf _NPROCESSORS_CONF`
 sudo cmake --install build
 cd ..
 ```
+
 ### 4. Hyprcursor
-```
+```sh
 git clone https://github.com/hyprwm/hyprcursor
 cd hyprcursor
-cmake -B build
-cmake --build build -j `nproc`
+cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -S . -B ./build
+cmake --build ./build --config Release --target all -j`nproc 2>/dev/null || getconf _NPROCESSORS_CONF`
 sudo cmake --install build
 cd ..
 ```
+
 ### 5. Hyprgraphics (NEW REQUIREMENT)
-```
+
+```sh
 git clone https://github.com/hyprwm/hyprgraphics
-cd hyprgraphics
-cmake -B build
-cmake --build build -j `nproc`
+cd hyprgraphics/
+cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -S . -B ./build
+cmake --build ./build --config Release --target all -j`nproc 2>/dev/null || getconf NPROCESSORS_CONF`
 sudo cmake --install build
 cd ..
 ```
+
 ### 6. Aquamarine (NEW BACKEND - REQUIRED)
-```
+```sh
 git clone https://github.com/hyprwm/aquamarine.git
 cd aquamarine
-
-cmake -S . -B build \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_PREFIX_PATH=/usr/local
-cmake --build build
+cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -S . -B ./build
+cmake --build ./build --config Release --target all -j`nproc 2>/dev/null || getconf _NPROCESSORS_CONF`
 sudo cmake --install build
-sudo ldconfig
+cd ..
+```
 
-```
-### 7. libxkbcommon
-```
-git clone https://github.com/xkbcommon/libxkbcommon
-cd libxkbcommon
-meson setup build --prefix=/usr/local
-meson compile -C build
-sudo meson install -C build
-sudo ldconfig
-```
-### 8. wayland-protocols
-```
-git clone https://gitlab.freedesktop.org/wayland/wayland-protocols
-cd wayland-protocols
-meson setup build
-meson compile -C build
-sudo meson install -C build
-```
-# Example: install GCC 15 via PPA (adjust for your distro/version)
-```
-sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-sudo apt update
-sudo apt install g++-15
-
-export CC=gcc-15
-export CXX=g++-15
-rm -rf build && mkdir build && cd build
-cmake ..
-make
-```
-### 9. libdisplay-info
-```
-git clone https://gitlab.freedesktop.org/emersion/libdisplay-info.git
-cd libdisplay-info
-
-meson setup build
-meson compile -C build
-sudo meson install -C build
-sudo ldconfig
-```
-### 10. hyprwire
-```
-git clone https://github.com/hyprwm/hyprwire
-cd hyprwire
-cmake -B build
-cmake --build build -j$(nproc)
-sudo cmake --install build
-```
-### 11. hyprtoolkit
-```
-git clone https://github.com/hyprwm/hyprtoolkit.git
-cd hyprtoolkit
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-sudo cmake --install build
-```
-```
-sudo find /usr -name "libhyprtoolkit.so*"
-echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/hyprtoolkit.conf
-sudo ldconfig
-```
-### 12. hyprland-guiutils
-```
-git clone https://github.com/hyprwm/hyprland-guiutils.git
-cd hyprland-guiutils
-mkdir -p build
-cd build
-cmake ..
-make -j$(nproc)
-sudo make install
-```
 ### 13. Build Hyprland
-```
+```sh
 git clone --recursive https://github.com/hyprwm/Hyprland
 cd Hyprland
 make all
 sudo make install
 cd ..
 ```
+
 ---
-4. Build xdg-desktop-portal-hyprland
+
+4. xdg-desktop-portal-hyprland
 Do not skip this, or screensharing and OBS will not work.
 ```
-git clone https://github.com/hyprwm/xdg-desktop-portal-hyprland
-cd xdg-desktop-portal-hyprland
-cmake -B build
-cmake --build build -j `nproc`
-sudo cmake --install build
-cd ..
+sudo apt install -y xdg-desktop-portal-hyprland
 ```
+
 ## Final Config
 ### Standard tools
-```
+```sh
 sudo apt install -y kitty rofi libxml2 waybar wl-clipboard grim slurp swaybg polkit-kde-agent-1
 ```
+
 ### Create config
-```
+```sh
 mkdir -p ~/.config/hypr
 cp /usr/local/share/hyprland/examples/hyprland.conf ~/.config/hypr/
 ```
+
 5. Other if needed
 - hyprlauncher
-```
+```sh
 sudo apt install libqalculate-dev pkg-config
 git clone https://github.com/hyprwm/hyprlauncher.git
 cd hyprlauncher
@@ -201,8 +155,9 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j$(nproc)
 sudo make install
 ```
+
 - sddm
-```
+```sh
 sudo apt install sddm
 sudo dpkg-reconfigure sddm  # Select SDDM as default
 sudo systemctl enable sddm
