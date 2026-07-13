@@ -1,11 +1,104 @@
 # Debian Hyprland Setup Plan
-## document date 12 Jul 2026 - redo, not confirm working
+## document date 12 Jul 2026 - I can not confirm that everything work
 ---
 1. Install Dependencies
 Added libsdbus-c++-dev (for xdg-portal), libdisplay-info-dev (for aquamarine),
 and fixed missing build tools.
+```sh
+# for dnf pkg
+sudo dnf install -y epel-release
+sudo dnf config-manager --set-enabled crb
+sudo dnf install -y \
+   meson ninja-build libinput-devel xcb-util-cursor-devel xcb-util-wm-devel \
+   spirv-tools-devel libdisplay-info-devel file-devel iniparser-devel \
+   git pkgconf-pkg-config cmake bison flex gcc gcc-c++ \
+   glslang-devel libxkbcommon-devel lcms2-devel readline-devel \
+   wayland-devel wayland-protocols-devel \
+   libdrm-devel mesa-libgbm-devel libxkbcommon-devel pixman-devel \
+   mesa-libEGL-devel mesa-libGLES-devel libseat-devel seatd \
+   libxcb-devel librsvg2-devel libzip-devel \
+   xcb-util-image-devel xcb-util-keysyms-devel xcb-util-renderutil-devel \
+   pango-devel systemd-devel hwdata glslang \
+   tomlplusplus-devel cairo-devel mesa-libGL-devel \
+   sdbus-cpp-devel libliftoff-devel \
+   pugixml-devel libXcursor-devel re2-devel libuuid-devel \
+   glib2-devel pipewire-devel pipewire-jack-audio-connection-kit-devel
+
+curl -LO https://pkgs.sysadmins.ws/el9/base/x86_64/muParser-2.3.4-1.el9.x86_64.rpm
+curl -LO https://pkgs.sysadmins.ws/el9/base/x86_64/muParser-devel-2.3.4-1.el9.x86_64.rpm
+sudo dnf install -y ./muParser-2.3.4-1.el9.x86_64.rpm ./muParser-devel-2.3.4-1.el9.x86_64.rpm
+```
+
+- for newer wayland, xkbcommon and wayland-protocols (Rocky Linux ships old versions,
+Hyprland needs wayland>=1.25.0, xkbcommon>=1.11.0 and wayland-protocols>=1.49)
+```sh
+sudo dnf install -y expat-devel
+
+cd /tmp
+
+# wayland 1.25.0 (system has 1.24.0, too old for wayland-protocols 1.49)
+git clone --depth 1 --branch 1.25.0 https://gitlab.freedesktop.org/wayland/wayland.git
+cd wayland
+meson setup build --prefix=/usr --buildtype=release \
+  -Ddocumentation=false -Dtests=false
+sudo meson install -C build
+cd ..
+
+# wayland-protocols 1.49 (needs wayland-scanner >= 1.25.0)
+git clone --depth 1 --branch 1.49 https://gitlab.freedesktop.org/wayland/wayland-protocols.git
+cd wayland-protocols
+meson setup build --prefix=/usr --buildtype=release
+sudo meson install -C build
+cd ..
+
+# xkbcommon 1.11.0 (system has 1.7.0, too old)
+git clone --depth 1 --branch xkbcommon-1.11.0 https://github.com/xkbcommon/libxkbcommon.git
+cd libxkbcommon
+meson setup build --prefix=/usr --buildtype=release \
+  -Denable-docs=false \
+  -Denable-tools=false
+sudo meson install -C build
+sudo ldconfig
+cd ..
+
+# verify
+pkg-config --modversion wayland           # should print 1.25.0
+pkg-config --modversion wayland-protocols  # should print 1.49
+pkg-config --modversion xkbcommon          # should print 1.11.0
+```
+
+- for Lua 5.5 (Rocky Linux only has 5.4, Hyprland requires 5.5)
+```sh
+cd /tmp
+curl -L -o lua-5.5.0.tar.gz https://www.lua.org/ftp/lua-5.5.0.tar.gz
+tar xzf lua-5.5.0.tar.gz
+cd lua-5.5.0
+make linux MYCFLAGS="-fPIC"
+sudo make install
+cd ..
+
+# Lua's Makefile doesn't install a pkg-config file, create it manually
+# (Hyprland cmake uses pkg_search_module to find Lua)
+sudo tee /usr/lib64/pkgconfig/lua55.pc << 'EOF'
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: Lua
+Description: An Extensible Extension Language
+Version: 5.5.0
+Libs: -L${libdir} -llua -lm -ldl
+Cflags: -I${includedir}
+EOF
+
+# verify
+lua -v                          # should print Lua 5.5.0
+pkg-config --modversion lua55   # should print 5.5.0
+```
 
 ```sh
+# for apt pkg
 sudo apt update && sudo apt install -y \
   build-essential git meson ninja-build pkg-config cmake bison flex \
   libwayland wayland-protocols \
@@ -29,6 +122,7 @@ sudo apt update && sudo apt install -y \
 
 - for dev pkgs
 ```sh
+# for apt pkg in dev branch
 sudo apt update && sudo apt install -y \
   build-essential git meson ninja-build pkg-config cmake bison flex \
   libwayland-dev wayland-protocols \
@@ -95,7 +189,6 @@ cd ..
 ```
 
 ### 5. Hyprgraphics (NEW REQUIREMENT)
-
 ```sh
 git clone https://github.com/hyprwm/hyprgraphics
 cd hyprgraphics/
@@ -115,7 +208,23 @@ sudo cmake --install build
 cd ..
 ```
 
-### 13. Build Hyprland
+### 7. Hyprwire (required by hyprctl, not in wiki dep list)
+```sh
+git clone --depth 1 --branch v0.3.1 https://github.com/hyprwm/hyprwire.git
+cd hyprwire
+
+# GCC 14.x libstdc++ lacks std::vector::append_range (C++23 ranges).
+# Apply compatibility patch that replaces append_range with insert(end, begin, end).
+git apply /path/to/hyprwire-v0.3.1-cpp23-compat.patch
+
+cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -S . -B ./build
+cmake --build ./build --config Release --target all -j`nproc 2>/dev/null || getconf NPROCESSORS_CONF`
+sudo cmake --install build
+sudo ldconfig
+cd ..
+```
+
+### 8. Build Hyprland
 ```sh
 git clone --recursive https://github.com/hyprwm/Hyprland
 cd Hyprland
@@ -163,3 +272,4 @@ sudo dpkg-reconfigure sddm  # Select SDDM as default
 sudo systemctl enable sddm
 reboot
 ```
+
